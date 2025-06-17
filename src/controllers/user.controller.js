@@ -3,6 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 
 
@@ -12,8 +13,8 @@ const genrateAccessAndRefreshTokens=async (userId)=>{
     try {
       const user=await User.findById(userId);
 
-      const accessToken=user.genrateAccessToken()
-      const refreshToken=user.genrateRefreshToken()
+      const accessToken=user.generateAccessToken()
+      const refreshToken=user.generateRefreshToken()
 
       // adding the refreshToken
       user.refreshToken=refreshToken;
@@ -125,7 +126,7 @@ const loginUser=asyncHandler(async(req,res)=>{
 
    const {email,password,username}=req.body
 
-   if(!email || !username){
+   if(!email && !username){
     throw new ApiError(400,"Username or Email is Required")
    }
 
@@ -153,7 +154,7 @@ const loginUser=asyncHandler(async(req,res)=>{
 
    // ab actually mn user obj oper hai tou wahan sab field ka access hai isliye hum dobara query chal rhe hain
 
-   const loggedInUser=await User.findById(user._id).select("-password, -refreshToken")
+   const loggedInUser=await User.findById(user._id).select("-password -refreshToken")
  
 
    // sending cookies 
@@ -202,4 +203,42 @@ const logOutUser=asyncHandler(async(req,res)=>{
   
 })
 
-export { registerUser,loginUser,logOutUser };
+
+
+const refreshAccessToken=asyncHandler(async(req,res)=>{
+  const incomingRefreshToken=req.cookies.refreshToken || req.body.refreshToken
+
+  if(!incomingRefreshToken){
+    throw new ApiError(401,"unAuthorized Request")
+
+  }
+
+  try {
+    const decodedToken=jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+  
+    const user=await User.findById(decodedToken?._id)
+  
+    if(!user){
+      throw new ApiError(401,"invalid refresh token")
+  
+    }
+  
+    if(incomingRefreshToken != user.refreshToken){
+      throw new ApiError(401,"refresh token is expired")
+    }
+  
+    const options={
+      httpOnly:true,
+      secure:true
+    }
+  
+  
+    const{accessToken,newRefreshToken}=await genrateAccessAndRefreshTokens(user._id)
+    return res.status(200).cookie("accessToken",accessToken,options).cookie("refreshToken",newRefreshToken,options)
+    .json(new ApiResponse(200,{accessToken,refreshToken:newRefreshToken},"access token Refreshed"))
+  } catch (error) {
+    throw ApiError (401,error?.message || "Invalid Refresh Token")
+  }
+
+})
+export { registerUser,loginUser,logOutUser,refreshAccessToken };
