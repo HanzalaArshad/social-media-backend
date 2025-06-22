@@ -7,6 +7,7 @@ import {
 } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const genrateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -466,6 +467,63 @@ return res.status(200).json(new ApiResponse(200,channel[0],"User Channel Fetched
 
 })
 
+
+
+const getWatchHistory=asyncHandler(async(req,res)=>{
+   const user=await User.aggregate([
+    {
+      $match:{
+        _id:new mongoose.Types.ObjectId(req.user,_id),
+
+      }
+    },
+    {
+      $lookup:{
+        from:"videos",
+        localField:"watchHistory",
+        foreignField:"_id",
+        as:"watchHistory",
+
+        //subpipline or nested lookup
+
+        pipeline:[
+            {
+              $lookup:{
+                from:"users",
+                localField:"owner",
+                foreignField:"_id",
+                as:"owner",
+
+                //assignment bahar laga kr krna  or second stage
+                pipeline:[
+                  {
+                    $project:{
+                    fullName:1,
+                    username:1,
+                    avatar:1,
+
+                  }
+                  }
+                ]
+
+              }
+            },
+            {
+              $addFields:{
+                owner:{
+                  // $arrayElemAt:["$owner",0], its ok you can do that 
+                  $first:"$owner"
+                }
+              }
+            }
+        ]
+      }
+    }
+   ])
+
+   return res.status(200).json(new ApiResponse(200,user[0].watchHistory,"watch History fetched Successfully"))
+})
+
 export {
   registerUser,
   loginUser,
@@ -476,5 +534,6 @@ export {
   UpdateAccountDetails,
   UpdateUserAvatar,
   UpdateUserCoverImage,
-  getUserChannelProfile
+  getUserChannelProfile,
+  getWatchHistory,
 };
