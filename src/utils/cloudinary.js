@@ -32,4 +32,27 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-export { uploadOnCloudinary };
+const deleteFromCloudinary = async (imageUrl, folder = "") => {
+  if (!imageUrl) return null;
+
+  try {
+    // Extract file name from URL
+    const parts = imageUrl.split("/");
+    const fileWithExt = parts[parts.length - 1]; // e.g. user123.png
+    const fileName = fileWithExt.split(".")[0]; // e.g. user123
+
+    // folder/user123
+    const publicId = folder ? `${folder}/${fileName}` : fileName;
+
+    const result = await cloudinary.uploader.destroy(publicId);
+    return result; // { result: "ok" } or { result: "not found" }
+  } catch (error) {
+    console.error("Cloudinary deletion error:", error.message);
+    return null;
+  }
+};
+
+
+
+
+export { uploadOnCloudinary,deleteFromCloudinary };
