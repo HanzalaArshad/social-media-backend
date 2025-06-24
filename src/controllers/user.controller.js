@@ -202,9 +202,9 @@ const logOutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
-      },
+      $unset: {
+      refreshToken: 1,
+    },
     },
     {
       new: true,
@@ -287,12 +287,12 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-  return res.status(200).json(200, req.user, "current User Fetched");
+  return res.status(200).json(new ApiResponse(200, req.user, "current User Fetched"));
 });
 
 const UpdateAccountDetails = asyncHandler(async (req, res) => {
-  const { fullName, email } = req.body;
-  if (!fullName || !email) {
+  const { fullName, email,username } = req.body;
+  if (!fullName && !email && username ) {
     throw new ApiError(400, "All Fields are Required");
   }
 
@@ -302,6 +302,7 @@ const UpdateAccountDetails = asyncHandler(async (req, res) => {
       $set: {
         fullName,
         email,
+        username,
       },
     },
     { new: true }
@@ -469,11 +470,11 @@ return res.status(200).json(new ApiResponse(200,channel[0],"User Channel Fetched
 
 
 
-const getWatchHistory=asyncHandler(async(req,res)=>{
+const   getWatchHistory=asyncHandler(async(req,res)=>{
    const user=await User.aggregate([
     {
       $match:{
-        _id:new mongoose.Types.ObjectId(req.user,_id),
+        _id:new mongoose.Types.ObjectId(req.user._id),
 
       }
     },
